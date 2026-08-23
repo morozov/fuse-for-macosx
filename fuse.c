@@ -173,10 +173,11 @@ static int do_start_files( start_files_t *start_files );
 #ifdef UI_WIN32
 /* The Win32 UI supplies WinMain(), which calls this */
 int fuse_main(int argc, char **argv)
-#elif defined UI_COCOA
-/* fusepb/main.m supplies main() and Emulator.m calls fuse_init() itself, so
-   this entry point goes unused; it is renamed only to avoid colliding with
-   the one in main.m */
+#elif defined UI_COCOA || defined UI_NULL
+/* Both UIs that supply their own main() take this branch: fusepb/main.m for
+   the Cocoa app (Emulator.m calls fuse_init() itself, so the entry point goes
+   unused there and is renamed only to avoid colliding with main.m), and
+   ui/null/null_compat.c for the headless build, which calls it. */
 int old_main(int argc, char **argv)
 #else
 int main(int argc, char **argv)

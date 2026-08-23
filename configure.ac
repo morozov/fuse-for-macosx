@@ -904,6 +904,40 @@ if test "x$missing_routines" = x; then
 fi
 AC_MSG_RESULT($missing_routines)
 
+dnl The in-process binding (ui/null) is a shared library; its name and the
+dnl flags that build one are platform-specific.
+AC_MSG_CHECKING(how to link the libfusex shared library)
+case "$host_os" in
+  darwin*)
+    FUSEX_LIB=libfusex.dylib
+    FUSEX_LDFLAGS='-dynamiclib -install_name @rpath/libfusex.dylib'
+    ;;
+  mingw32*|cygwin*)
+    FUSEX_LIB=libfusex.dll
+    FUSEX_LDFLAGS='-shared'
+    ;;
+  *)
+    FUSEX_LIB=libfusex.so
+    FUSEX_LDFLAGS='-shared -Wl,-soname,libfusex.so'
+    ;;
+esac
+AC_MSG_RESULT($FUSEX_LIB)
+AC_SUBST(FUSEX_LIB)
+AC_SUBST(FUSEX_LDFLAGS)
+
+dnl The library is linked from the program's own objects, so those must be
+dnl position-independent where the platform requires it in a shared object.
+dnl macOS and Windows need no flag; ELF targets reject non-PIC relocations.
+AS_IF([test "$UI" = null], [
+  case "$host_os" in
+    darwin*|mingw32*|cygwin*)
+      ;;
+    *)
+      CFLAGS="$CFLAGS -fPIC"
+      ;;
+  esac
+])
+
 dnl Work out which compatibility routines to use
 AC_MSG_CHECKING(which compatibility routines to use)
 case "$host_os" in

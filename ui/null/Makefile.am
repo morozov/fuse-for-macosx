@@ -25,18 +25,20 @@ fuse_SOURCES += $(ui_null_files)
 
 BUILT_SOURCES += $(ui_null_built)
 
-# The in-process binding: a macOS shared library built from the same objects
-# as the fuse program (fusex_api.c, the C API, is among them), loaded by a
-# host process.
-all-local: libfusex.dylib
+# The in-process binding: a shared library built from the same objects as the
+# fuse program (fusex_api.c, the C API, is among them), loaded by a host
+# process. @FUSEX_LIB@ and @FUSEX_LDFLAGS@ are set by configure: a .dylib on
+# macOS, a .so elsewhere. configure adds -fPIC to CFLAGS for this UI where the
+# platform requires position-independent code in a shared object.
+all-local: @FUSEX_LIB@
 
 # Depend on the program so all of $(fuse_OBJECTS) (including the specially-built
 # scaler objects) exist before this links them into the shared library.
-libfusex.dylib: fuse$(EXEEXT)
-	$(AM_V_GEN)$(CCLD) -dynamiclib -install_name @rpath/libfusex.dylib \
+@FUSEX_LIB@: fuse$(EXEEXT)
+	$(AM_V_GEN)$(CCLD) @FUSEX_LDFLAGS@ \
 	  $(LDFLAGS) -o $@ $(fuse_OBJECTS) $(fuse_LDADD) $(LIBS)
 
-CLEANFILES += libfusex.dylib
+CLEANFILES += @FUSEX_LIB@
 
 endif
 
