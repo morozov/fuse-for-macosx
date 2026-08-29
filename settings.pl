@@ -225,11 +225,13 @@ sub emit_forward_declarations {
     print << 'CODE';
 static int read_config_file( settings_info *settings );
 
+#ifndef UI_NULL
 #ifdef HAVE_LIB_XML2
 static int parse_xml( xmlDocPtr doc, settings_info *settings );
 #else				/* #ifdef HAVE_LIB_XML2 */
 static int parse_ini( utils_file *file, settings_info *settings );
 #endif				/* #ifdef HAVE_LIB_XML2 */
+#endif				/* #ifndef UI_NULL */
 CODE
     print "\n";
   }
@@ -491,6 +493,26 @@ CODE
 
 sub emit_config_io_portable {
   print hashline( __LINE__ ), << 'CODE';
+
+#ifdef UI_NULL
+
+/* The null UI has no user and therefore no preferences: what it runs is
+   determined by argv and the media it is given, and it leaves the preferences
+   of the interactive Fuse on the same machine alone. */
+
+static int
+read_config_file( settings_info *settings GCC_UNUSED )
+{
+  return 0;
+}
+
+int
+settings_write_config( settings_info *settings GCC_UNUSED )
+{
+  return 0;
+}
+
+#else				/* #ifdef UI_NULL */
 
 #ifdef HAVE_LIB_XML2
 
@@ -938,6 +960,8 @@ error:
 }
 
 #endif				/* #ifdef HAVE_LIB_XML2 */
+
+#endif				/* #ifdef UI_NULL */
 CODE
 }
 
