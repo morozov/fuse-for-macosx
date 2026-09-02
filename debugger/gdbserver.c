@@ -30,14 +30,15 @@
 #include "mempool.h"
 #include "periph.h"
 #include "machine.h"
-#include "peripherals/fs/xfs.h"
 #include "peripherals/spectranet.h"
 #include "settings.h"
 #include "utils.h"
 #include "ui/ui.h"
 #include "z80/z80.h"
 #include "z80/z80_macros.h"
+#ifdef BUILD_SPECTRANET
 #include "vfile.h"
+#endif
 
 #include <pthread.h>
 #include <assert.h>
@@ -408,7 +409,8 @@ static void process_vpacket(char *payload)
     }
     name = payload;
 
-    // Try vfile handler first (handles vFile: and vSpectranext: packets)
+    // vFile and vSpectranext are provided by the Spectranet XFS implementation.
+#ifdef BUILD_SPECTRANET
     if (strncmp(name, "File:", 5) == 0 || strncmp(name, "Spectranext:", 12) == 0)
     {
         const char* response = vfile_handle_v(name, args ? args : "", (uint32_t)args_len);
@@ -418,6 +420,7 @@ static void process_vpacket(char *payload)
         }
         return;
     }
+#endif
 
     if (!strcmp("Cont", name))
     {

@@ -221,6 +221,51 @@ memory_source_find( const char *description )
 }
 
 /* Allocate some memory from the pool */
+void
+memory_rom_bank_clear( memory_rom_bank *bank )
+{
+  libspectrum_free( bank->data );
+  bank->data = NULL;
+  bank->length = 0;
+  bank->save_to_snapshot = 0;
+}
+
+int
+memory_rom_bank_set( memory_rom_bank *bank, const libspectrum_byte *data,
+                     size_t length, int save_to_snapshot )
+{
+  libspectrum_byte *new_data;
+
+  new_data = libspectrum_new( libspectrum_byte, length );
+  if( !new_data ) return 1;
+
+  memcpy( new_data, data, length );
+  memory_rom_bank_clear( bank );
+  bank->data = new_data;
+  bank->length = length;
+  bank->save_to_snapshot = save_to_snapshot;
+
+  return 0;
+}
+
+void
+memory_rom_bank_map( const memory_rom_bank *bank, memory_page *map,
+                     int page_num )
+{
+  memory_page *page;
+  size_t offset;
+
+  for( page = &map[ page_num * MEMORY_PAGES_IN_16K ], offset = 0;
+       offset < bank->length;
+       page++, offset += MEMORY_PAGE_SIZE ) {
+    page->offset = offset;
+    page->page_num = page_num;
+    page->page = bank->data + offset;
+    page->writable = 0;
+    page->save_to_snapshot = bank->save_to_snapshot;
+  }
+}
+
 libspectrum_byte*
 memory_pool_allocate( size_t length )
 {
@@ -393,23 +438,37 @@ readbyte( libspectrum_word address )
       return opus_read( address );
 
     if( spectranet_paged ) {
+      if( spectranet_w5100_paged_0 && address < 0x1000 )
+        return spectranet_w5100_read( mapping, address );
       if( spectranet_w5100_paged_a && address >= 0x1000 && address < 0x2000 )
         return spectranet_w5100_read( mapping, address );
       if( spectranet_w5100_paged_b && address >= 0x2000 && address < 0x3000 )
         return spectranet_w5100_read( mapping, address );
+      if( spectranet_w5100_paged_3 && address >= 0x3000 )
+        return spectranet_w5100_read( mapping, address );
+      if( spectranet_xfs_paged_0 && address < 0x1000 )
+        return spectranet_xfs_read( mapping, address );
       if( spectranet_xfs_paged_a && address >= 0x1000 && address < 0x2000 )
         return spectranet_xfs_read( mapping, address );
       if( spectranet_xfs_paged_b && address >= 0x2000 && address < 0x3000 )
         return spectranet_xfs_read( mapping, address );
+      if( spectranet_xfs_paged_3 && address >= 0x3000 )
+        return spectranet_xfs_read( mapping, address );
+      if( spectranet_spectranext_config_paged_0 && address < 0x1000 )
+        return spectranet_spectranext_config_read( mapping, address );
       if( spectranet_spectranext_config_paged_a && address >= 0x1000 && address < 0x2000 )
         return spectranet_spectranext_config_read( mapping, address );
       if( spectranet_spectranext_config_paged_b && address >= 0x2000 && address < 0x3000 )
         return spectranet_spectranext_config_read( mapping, address );
-      if( address < 0x1000 )
+      if( spectranet_spectranext_config_paged_3 && address >= 0x3000 )
+        return spectranet_spectranext_config_read( mapping, address );
+      if( spectranet_flash_paged_0 && address < 0x1000 )
         return spectranet_flash_rom_read( mapping, address );
       if( spectranet_flash_paged_a && address >= 0x1000 && address < 0x2000 )
         return spectranet_flash_rom_read( mapping, address );
       if( spectranet_flash_paged_b && address >= 0x2000 && address < 0x3000 )
+        return spectranet_flash_rom_read( mapping, address );
+      if( spectranet_flash_paged_3 && address >= 0x3000 )
         return spectranet_flash_rom_read( mapping, address );
     }
 
@@ -506,12 +565,24 @@ writebyte_internal( libspectrum_word address, libspectrum_byte b )
     /* all writes need to be parsed by the flash rom emulation */
     spectranet_flash_rom_write(address, b);
     
+    if( spectranet_w5100_paged_0 && address < 0x1000 ) {
+      spectranet_w5100_write( mapping, address, b );
+      return;
+    }
     if( spectranet_w5100_paged_a && address >= 0x1000 && address < 0x2000 ) {
       spectranet_w5100_write( mapping, address, b );
       return;
     }
     if( spectranet_w5100_paged_b && address >= 0x2000 && address < 0x3000 ) {
       spectranet_w5100_write( mapping, address, b );
+      return;
+    }
+    if( spectranet_w5100_paged_3 && address >= 0x3000 ) {
+      spectranet_w5100_write( mapping, address, b );
+      return;
+    }
+    if( spectranet_xfs_paged_0 && address < 0x1000 ) {
+      spectranet_xfs_write( mapping, address, b );
       return;
     }
     if( spectranet_xfs_paged_a && address >= 0x1000 && address < 0x2000 ) {
@@ -522,11 +593,23 @@ writebyte_internal( libspectrum_word address, libspectrum_byte b )
       spectranet_xfs_write( mapping, address, b );
       return;
     }
+    if( spectranet_xfs_paged_3 && address >= 0x3000 ) {
+      spectranet_xfs_write( mapping, address, b );
+      return;
+    }
+    if( spectranet_spectranext_config_paged_0 && address < 0x1000 ) {
+      spectranet_spectranext_config_write( mapping, address, b );
+      return;
+    }
     if( spectranet_spectranext_config_paged_a && address >= 0x1000 && address < 0x2000 ) {
       spectranet_spectranext_config_write( mapping, address, b );
       return;
     }
     if( spectranet_spectranext_config_paged_b && address >= 0x2000 && address < 0x3000 ) {
+      spectranet_spectranext_config_write( mapping, address, b );
+      return;
+    }
+    if( spectranet_spectranext_config_paged_3 && address >= 0x3000 ) {
       spectranet_spectranext_config_write( mapping, address, b );
       return;
     }
@@ -629,7 +712,7 @@ memory_from_snapshot( libspectrum_snap *snap )
   if( libspectrum_snap_custom_rom( snap ) ) {
     for( i = 0; i < libspectrum_snap_custom_rom_pages( snap ) && i < 4; i++ ) {
       if( libspectrum_snap_roms( snap, i ) ) {
-        machine_load_rom_bank_from_buffer( memory_map_rom, i,
+        machine_load_rom_bank_from_snapshot( memory_map_rom, i,
           libspectrum_snap_roms( snap, i ),
           libspectrum_snap_rom_length( snap, i ), 1 );
       }
