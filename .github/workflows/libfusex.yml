@@ -1,4 +1,4 @@
-name: Null UI
+name: libfusex
 
 on:
   pull_request:
@@ -6,8 +6,8 @@ on:
     branches: [main]
 
 jobs:
-  null-ui-build:
-    name: Null UI (${{ matrix.os }})
+  libfusex:
+    name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
