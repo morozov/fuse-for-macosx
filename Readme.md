@@ -19,7 +19,7 @@ sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
 To switch xcodebuild to use XCode, and then do
 
 ```bash
-make
+make -f Makefile.darwin
 ```
 
 ### On Windows
